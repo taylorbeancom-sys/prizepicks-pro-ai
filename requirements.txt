@@ -7,3 +7,6 @@ nba_api
 numpy
 requests
 cloudscraper
+pytesseract
+Pillow
+re
