@@ -131,16 +131,16 @@ with tab1:
             # Simplified Analysis Logic
             search = simplify(p_name.split()[-1])
             
-            # Additional check to ensure the column actually exists
-            if 'player_name' in historical_df.columns:
+        # Additional check to ensure the column actually exists
+     if 'player_name' in historical_df.columns:
                 p_df = historical_df[historical_df['player_name'].apply(simplify).str.contains(search)]
                 
-                if not p_df.empty:
-                    render_optimizer_card(p_name, line_val, p_df['points_scored'].mean(), 58.2)
-                else:
-                    st.error(f"Player '{p_name}' not found in your current records.")
-            else:
-                st.error("Column 'player_name' missing. Check your Supabase table headers!")
+        if not p_df.empty:
+                render_optimizer_card(p_name, line_val, p_df['points_scored'].mean(), 58.2)
+        else:
+            st.error(f"Player '{p_name}' not found in your current records.")
+        else:
+            st.error("Column 'player_name' missing. Check your Supabase table headers!")
 
 # --- TAB 2: LIVE OPTIMIZER (The PlayerProps.ai Look) ---
 with tab2:
