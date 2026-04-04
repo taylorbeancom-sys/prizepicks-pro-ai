@@ -116,6 +116,7 @@ st.title("🎯 PrizePicks Pro AI Optimizer")
 tab1, tab2, tab3, tab4 = st.tabs(["🚀 Analysis", "📡 Live Optimizer", "📥 Bulk Loader", "📸 OCR Scanner"])
 
 # --- TAB 1: SINGLE PLAYER ---
+# --- TAB 1: SINGLE PLAYER ---
 with tab1:
     col1, col2 = st.columns(2)
     with col1:
@@ -123,7 +124,9 @@ with tab1:
         line_val = st.number_input("Line", value=30.5)
     with col2:
         opp = st.text_input("Opponent", "GSW")
-     if st.button("Run AI Analysis"):
+    
+    # This button must be aligned with col1 and col2
+    if st.button("Run AI Analysis"):
         # SAFETY CHECK: Stop if the database is empty
         if historical_df.empty:
             st.warning("⚠️ Your database is empty! Go to the 'Bulk Loader' tab and add some players first.")
@@ -131,16 +134,17 @@ with tab1:
             # Simplified Analysis Logic
             search = simplify(p_name.split()[-1])
             
-        # Additional check to ensure the column actually exists
-     if 'player_name' in historical_df.columns:
+            # Ensure the column actually exists in your Supabase data
+            if 'player_name' in historical_df.columns:
                 p_df = historical_df[historical_df['player_name'].apply(simplify).str.contains(search)]
                 
-        if not p_df.empty:
-                render_optimizer_card(p_name, line_val, p_df['points_scored'].mean(), 58.2)
-        else:
-            st.error(f"Player '{p_name}' not found in your current records.")
-        else:
-            st.error("Column 'player_name' missing. Check your Supabase table headers!")
+                if not p_df.empty:
+                    # Calculates a simple average for the demo; replace with your ML model later
+                    render_optimizer_card(p_name, line_val, p_df['points_scored'].mean(), 58.2)
+                else:
+                    st.error(f"Player '{p_name}' not found in your current records.")
+            else:
+                st.error("Column 'player_name' missing. Check your Supabase table headers!")
 
 # --- TAB 2: LIVE OPTIMIZER (The PlayerProps.ai Look) ---
 with tab2:
