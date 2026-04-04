@@ -146,16 +146,37 @@ with tab1:
             else:
                 st.error("Column 'player_name' missing. Check your Supabase table headers!")
 
-# --- TAB 2: LIVE OPTIMIZER (The PlayerProps.ai Look) ---
+# --- TAB 2: LIVE OPTIMIZER ---
 with tab2:
-    st.subheader("Today's High-Edge Props")
+    st.subheader("🔥 Today's High-Edge NBA Props")
     live_board = load_live_board()
+    
     if not live_board.empty:
+        # Loop through every player currently on the PrizePicks board
         for _, row in live_board.iterrows():
-            # Mocking projection for UI demo - replace with your model.predict()
-            render_optimizer_card(row['player_name'], row['line'], row['line'] + 1.2, 56.4)
+            name = row['player_name']
+            line = row['line']
+            
+            # Find this player's historical stats in your database
+            search = simplify(name.split()[-1])
+            p_hist = historical_df[historical_df['player_name'].apply(simplify).str.contains(search)]
+            
+            if not p_hist.empty:
+                # REAL CALCULATION: Use the average of their last 20 games
+                real_proj = p_hist['points_scored'].mean()
+                
+                # Calculate Win Probability (Simplified for now)
+                # If projection is higher than the line, we like the OVER
+                edge = real_proj - line
+                win_prob = 50 + (edge * 2) # Simple edge multiplier
+                win_prob = max(min(win_prob, 65), 35) # Keep it realistic between 35%-65%
+
+                render_optimizer_card(name, line, real_proj, round(win_prob, 1))
+            else:
+                # If you haven't bulk-loaded this player yet
+                st.info(f"⏳ {name} is on the board, but his stats aren't in Supabase. Go to Bulk Loader!")
     else:
-        st.info("No live lines found. Ensure bridge.py is running on your laptop!")
+        st.warning("📡 No live lines found in 'live_board'. Run bridge.py on your laptop to sync the PrizePicks board!")
 
 # --- TAB 3: BULK LOADER ---
 with tab3:
