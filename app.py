@@ -39,10 +39,9 @@ with tab1:
         is_b2b = st.checkbox("Is this a Back-to-Back tonight?")
 
     if st.button("🚀 Run Advanced Analysis", type="primary"):
-        p_df = historical_df[historical_df['player_name'].str.contains(player_input.split()[-1], case=False, na=False)]
-        
-        if not p_df.empty:
-            st.info(f"✅ Found {len(p_df)} games. Analyzing...")
+       # Smart Search: Only look at the last name and ignore case
+        last_name = player_input.split()[-1].lower()
+        p_df = historical_df[historical_df['player_name'].str.lower().str.contains(last_name, na=False)]
             
             # Model & Metrics
             model, historical_std = train_projection_model(p_df)
