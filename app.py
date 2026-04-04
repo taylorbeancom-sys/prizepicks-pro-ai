@@ -25,7 +25,7 @@ def load_db():
 
 historical_df = load_db()
 
-tab1, tab2, tab3 = st.tabs(["🔍 Single Analysis", "📡 Board Scanner", "📥 Bulk Data Loader"])
+tab1, tab2, tab3, tab4 = st.tabs(["🔍 Single Analysis", "📡 Board Scanner", "📥 Bulk Data Loader","📸 Scanner"])
 
 
 # ==========================================
