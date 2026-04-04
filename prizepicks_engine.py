@@ -10,9 +10,19 @@ SUPABASE_KEY = "sb_publishable_HBkc3_JYSmjCwjf10aCVpQ_sQO9a4EN"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def fetch_historical_data():
-    res = supabase.table('player_historical_stats').select('*').execute()
-    return pd.DataFrame(res.data) if res.data else pd.DataFrame()
-
+    try:
+        res = supabase.table('player_historical_stats').select('*').execute()
+        if not res.data:
+            # Return an empty DataFrame with the correct columns defined
+            return pd.DataFrame(columns=[
+                'player_name', 'points_scored', 'minutes_played', 
+                'opponent_def_rating', 'pace', 'usage_rate', 'days_rest', 'is_b2b'
+            ])
+        return pd.DataFrame(res.data)
+    except Exception as e:
+        print(f"Fetch Error: {e}")
+        return pd.DataFrame()
+        
 def train_projection_model(df):
     # Fill gaps from schema changes
     df['days_rest'] = df['days_rest'].fillna(2)
