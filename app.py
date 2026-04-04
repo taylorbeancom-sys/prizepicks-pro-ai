@@ -42,6 +42,10 @@ with tab1:
         is_b2b = st.checkbox("Is this a Back-to-Back tonight?")
 
     if st.button("🚀 Run Advanced Analysis", type="primary"):
+        # This finds 'Doncic' even if the database says 'Dončić'
+        search_term = player_input.split()[-1].lower().replace('ic', '') 
+        p_df = historical_df[historical_df['player_name'].str.lower().str.contains(search_term, na=False)]
+        
         # 1. SMART SEARCH: Find player by last name to ignore accents/case
         last_name_search = player_input.split()[-1].lower()
         p_df = historical_df[historical_df['player_name'].str.lower().str.contains(last_name_search, na=False)]
