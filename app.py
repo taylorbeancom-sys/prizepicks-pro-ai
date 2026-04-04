@@ -186,36 +186,48 @@ with tab3:
 # ==========================================
 # TAB 4: ENTRY SCANNER
 # ==========================================
+with tab4:
+    st.header("📸 Smart Entry Scanner")
+    st.write("Upload a screenshot of a PrizePicks slip to see the AI's win probability.")
 
-with tab4: # Create a new Tab 4
-    st.header("📸 Entry Scanner & Analyzer")
-    st.write("Upload a screenshot or paste a PrizePicks shared link to research the whole slip.")
-
-    uploaded_file = st.file_uploader("Upload PrizePicks Screenshot", type=['png', 'jpg', 'jpeg'])
-    entry_link = st.text_input("OR Paste Shared Entry Link")
-
-    if uploaded_file:
-        img = Image.open(uploaded_file)
-        st.image(img, caption="Scanning Entry...", width=300)
+    uploaded_img = st.file_uploader("Upload Slip Screenshot", type=['png', 'jpg', 'jpeg'])
+    
+    if uploaded_img:
+        img = Image.open(uploaded_img)
+        st.image(img, caption="Scanning for picks...", width=300)
         
-        # OCR: Convert Image to Text
-        raw_text = pytesseract.image_to_string(img)
-        
-        # LOGIC: Find Players and Lines (e.g., "Luka Doncic 31.5")
-        # This regex looks for Name + Number
-        found_picks = re.findall(r"([A-Z][a-z]+ [A-Z][a-z]+)\s+([\d.]+)", raw_text)
-        
-        if found_picks:
-            st.success(f"🔍 Found {len(found_picks)} picks in screenshot!")
-            for name, line in found_picks:
-                st.write(f"**Analyzing {name} (Line: {line})**")
-                # Trigger your existing analysis function
-                # run_analysis(name, float(line)) 
-        else:
-            st.error("Could not read picks. Make sure the player names and lines are clear!")
+        with st.spinner("Extracting player data..."):
+            # OCR: Convert Image to Text
+            raw_text = pytesseract.image_to_string(img)
+            
+            # Find Name + Number (e.g., 'Luka Doncic 32.5')
+            # This regex looks for 2 capitalized words followed by a decimal number
+            picks_found = re.findall(r"([A-Z][a-z]+ [A-Z][a-z]+)\s+([\d.]+)", raw_text)
 
-    if entry_link:
-        # Link Parsing Logic
-        if "prizepicks.com" in entry_link:
-            st.info("🔗 Link detected. Attempting to pull entry data...")
-            # Here we would use your 'bridge.py' logic to fetch the specific link
+            if picks_found:
+                st.success(f"🔍 Found {len(picks_found)} picks!")
+                
+                # Create a results table
+                analysis_results = []
+                for name, line in picks_found:
+                    # 1. Search Supabase for this player
+                    name_search = name.split()[-1].lower()
+                    p_data = historical_df[historical_df['player_name'].str.lower().str.contains(name_search, na=False)]
+                    
+                    if not p_data.empty:
+                        # 2. Run your existing AI Prediction Logic
+                        model, s_dev = train_projection_model(p_data)
+                        # Defaulting to 115 Def Rating / 100 Pace for the scan
+                        proj = model.predict(pd.DataFrame([[115.0, 100.0, 25.0, 36.0, 2, False]], 
+                               columns=['opponent_def_rating', 'pace', 'usage_rate', 'minutes_played', 'days_rest', 'is_b2b']))[0]
+                        
+                        prob = round(stats.norm.sf(float(line), loc=proj, scale=s_dev) * 100, 1)
+                        
+                        analysis_results.append({
+                            "Player": name, "Line": line, "AI Proj": round(proj, 1), "Win %": f"{prob}%"
+                        })
+                
+                if analysis_results:
+                    st.table(pd.DataFrame(analysis_results))
+            else:
+                st.error("Could not detect any players. Make sure the screenshot is clear and not cropped.")
