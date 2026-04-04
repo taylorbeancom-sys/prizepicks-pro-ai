@@ -116,63 +116,54 @@ with st.expander("🛠️ Database Diagnostics"):
 from prizepicks_board_scraper import get_live_prizepicks_board
 
 # ==========================================
-# TAB 2: LIVE BOARD SCANNER (UPGRADED)
+# TAB 2: LIVE BOARD SCANNER
 # ==========================================
 with tab2:
     st.markdown("### 📡 Live +EV Board Scanner")
     
-    col_a, col_b = st.columns([3, 1])
-    with col_a:
-        st.info("Click the button below to pull every active NBA line from PrizePicks.")
-    with col_b:
-        if st.button("🔄 Sync Live Board", use_container_width=True, type="primary"):
-            live_board_df = get_live_prizepicks_board()
-            st.session_state['live_board'] = live_board_df
+    if st.button("🔄 Sync Live Board", type="primary", use_container_width=True):
+        with st.spinner("Connecting to PrizePicks..."):
+            df_live = get_live_prizepicks_board()
+            
+            if not df_live.empty:
+                st.session_state['live_board'] = df_live
+                st.success(f"Found {len(df_live)} active Points lines!")
+            else:
+                st.error("No lines found. PrizePicks might be blocking the request or the board is empty.")
 
+    # If we have board data, run the AI against every line automatically
     if 'live_board' in st.session_state:
         board = st.session_state['live_board']
-        st.write(f"Found **{len(board)}** active Points lines.")
-        
-        results = []
-        missing_players = []
+        final_picks = []
 
         for _, row in board.iterrows():
-            p_name = row['player']
-            # Search database for the player
-            p_df = historical_df[historical_df['player_name'].str.contains(p_name.split()[-1], case=False, na=False)]
+            # Check if we have this player in your Supabase DB
+            # We use the fuzzy search we built for 'Dončić'
+            name_search = row['player'].split()[-1].lower()
+            p_df = historical_df[historical_df['player_name'].str.lower().str.contains(name_search, na=False)]
             
-            if p_df.empty:
-                missing_players.append(p_name)
-                continue
-            
-            # Run the AI logic
-            model, s_dev = train_projection_model(p_df)
-            d_rat, pc = get_opponent_metrics(row['opponent'])
-            u = calculate_projected_usage(p_df, p_name, [])
-            
-            m_df = pd.DataFrame({'opponent_def_rating': [d_rat], 'pace': [pc], 'usage_rate': [u], 'minutes_played': [36.0], 'days_rest': [2], 'is_b2b': [False]})
-            proj = model.predict(m_df)[0] * (d_rat / 115.0) * (pc / 100.0)
-            
-            prob_o = round(stats.norm.sf(row['line'], loc=proj, scale=s_dev) * 100, 2)
-            prob_u = round(stats.norm.cdf(row['line'], loc=proj, scale=s_dev) * 100, 2)
-            
-            results.append({
-                "Player": p_name,
-                "Line": row['line'],
-                "AI Proj": round(proj, 1),
-                "Play": "OVER" if prob_o > prob_u else "UNDER",
-                "Win %": max(prob_o, prob_u),
-                "Edge": round(max(prob_o, prob_u) - 54.2, 2)
-            })
+            if not p_df.empty:
+                # 🤖 RUN THE AI MATH
+                model, s_dev = train_projection_model(p_df)
+                # (Assuming you have these helper functions in your code)
+                d_rat, pc = get_opponent_metrics(row['opponent']) 
+                proj = model.predict(pd.DataFrame([[d_rat, pc, 25.0, 36.0, 2, False]], 
+                       columns=['opponent_def_rating', 'pace', 'usage_rate', 'minutes_played', 'days_rest', 'is_b2b']))[0]
+                
+                # Calculate Win Probability
+                prob_over = round(stats.norm.sf(row['line'], loc=proj, scale=s_dev) * 100, 2)
+                
+                final_picks.append({
+                    "Player": row['player'],
+                    "Line": row['line'],
+                    "AI Projection": round(proj, 1),
+                    "Win Prob": f"{prob_over}%",
+                    "Edge": round(prob_over - 54.2, 1)
+                })
 
-        if results:
-            res_df = pd.DataFrame(results).sort_values("Edge", ascending=False)
-            st.dataframe(res_df, use_container_width=True)
-        
-        if missing_players:
-            with st.expander(f"⚠️ {len(missing_players)} Players Missing Data"):
-                st.write("The following players are on the board but not in your database. Go to Tab 3 to scrape them:")
-                st.write(", ".join(missing_players[:15]) + "...")
+        if final_picks:
+            results_df = pd.DataFrame(final_picks).sort_values("Edge", ascending=False)
+            st.table(results_df)
 
 # ==========================================
 # TAB 3: BULK DATA LOADER
