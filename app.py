@@ -23,9 +23,7 @@ historical_df = load_db()
 
 tab1, tab2, tab3 = st.tabs(["🔍 Single Analysis", "📡 Board Scanner", "📥 Bulk Data Loader"])
 
-# ==========================================
-# TAB 1: SINGLE PLAYER ANALYSIS
-# ==========================================
+
 # ==========================================
 # TAB 1: SINGLE PLAYER ANALYSIS
 # ==========================================
@@ -40,6 +38,14 @@ with tab1:
     with col3:
         last_game_date = st.date_input("Last Game Date", value=datetime(2026, 4, 1))
         is_b2b = st.checkbox("Is this a Back-to-Back tonight?")
+
+    # DEBUG: Show what's in the database
+with st.expander("🛠️ Database Diagnostics"):
+    if not historical_df.empty:
+        unique_names = historical_df['player_name'].unique()
+        st.write(f"Players currently in DB: {', '.join(unique_names)}")
+    else:
+        st.error("The app thinks the database is empty. Clear cache or re-scrape!")
 
     if st.button("🚀 Run Advanced Analysis", type="primary"):
         # This finds 'Doncic' even if the database says 'Dončić'
