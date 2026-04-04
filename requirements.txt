@@ -5,3 +5,5 @@ supabase
 scipy
 nba_api
 numpy
+requests
+cloudscraper
