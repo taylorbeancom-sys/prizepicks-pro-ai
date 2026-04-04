@@ -55,7 +55,7 @@ supabase = create_client(url, key)
 
 @st.cache_data(ttl=600)
 def load_historical_data():
-    res = supabase.table("player_stats").select("*").execute()
+    res = supabase.table("player_historical_stats").select("*").execute()
     return pd.DataFrame(res.data)
 
 @st.cache_data(ttl=60)
