@@ -26,6 +26,9 @@ tab1, tab2, tab3 = st.tabs(["🔍 Single Analysis", "📡 Board Scanner", "📥 
 # ==========================================
 # TAB 1: SINGLE PLAYER ANALYSIS
 # ==========================================
+# ==========================================
+# TAB 1: SINGLE PLAYER ANALYSIS
+# ==========================================
 with tab1:
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -39,16 +42,19 @@ with tab1:
         is_b2b = st.checkbox("Is this a Back-to-Back tonight?")
 
     if st.button("🚀 Run Advanced Analysis", type="primary"):
-            # Smart Search: Only look at the last name and ignore case
-            last_name = player_input.split()[-1].lower()
-            p_df = historical_df[historical_df['player_name'].str.lower().str.contains(last_name, na=False)]
+        # 1. SMART SEARCH: Find player by last name to ignore accents/case
+        last_name_search = player_input.split()[-1].lower()
+        p_df = historical_df[historical_df['player_name'].str.lower().str.contains(last_name_search, na=False)]
+        
+        if not p_df.empty:
+            st.info(f"✅ Found {len(p_df)} games for {player_input}. Analyzing...")
             
-            # Model & Metrics
+            # 2. RUN MODELS & METRICS
             model, historical_std = train_projection_model(p_df)
             d_rat, pace = get_opponent_metrics(opp)
             usage = calculate_projected_usage(p_df, player_input, [])
             
-            # Prediction
+            # 3. GENERATE PREDICTION
             match_df = pd.DataFrame({
                 'opponent_def_rating': [d_rat], 'pace': [pace], 
                 'usage_rate': [usage], 'minutes_played': [36.5],
@@ -58,38 +64,40 @@ with tab1:
             
             proj = model.predict(match_df)[0] * (d_rat / 115.0) * (pace / 100.0)
             
-            # Market Check
+            # 4. FETCH MARKET DATA
             with st.spinner("Fetching Market Consensus..."):
                 consensus = get_market_consensus(player_input) or dk_line
 
-            # Results Display
+            # 5. DISPLAY RESULTS
             st.divider()
             c1, c2, c3 = st.columns(3)
             c1.metric("AI Projection", f"{proj:.1f}", delta=f"{proj - pp_line:.1f}")
+            
             market_diff = round(consensus - pp_line, 1)
             c2.metric("Market Consensus", f"{consensus}", delta=f"{market_diff}")
+            
             vol = "High" if p_df['points_scored'].std() > 8 else "Low"
             c3.metric("Volatility", vol)
 
-            # Win Probability & Kelly
+            # 6. WIN PROBABILITY & KELLY
             prob_over = round(stats.norm.sf(pp_line, loc=proj, scale=historical_std) * 100, 2)
             st.write(f"### 🎯 Win Probability: {prob_over}%")
             st.progress(int(prob_over))
             
-            # Kelly Criterion (Quarter Kelly)
-            b = 2.0 
-            p = prob_over / 100
+            # Kelly Criterion Calculation
+            b, p = 2.0, (prob_over / 100)
             kelly = ((b * p) - (1 - p)) / b
             suggestion = max(0, round(kelly * 0.25 * 100, 1))
 
-            if consensus - pp_line >= 1.0 and prob_over > 55:
+            # THE VERDICT (Where your error was)
+            if (consensus - pp_line >= 1.0) and (prob_over > 55):
                 st.success(f"💎 DIAMOND PLAY: AI and Market agree. Suggestion: Bet {suggestion}%")
             elif prob_over > 56:
                 st.success(f"🤖 AI EDGE: Suggestion: Bet {suggestion}%")
             else:
                 st.error("❌ NO EDGE: Pass on this play.")
         else:
-            st.error("Player data missing. Update in Tab 3.")
+            st.error(f"Player '{player_input}' not found. Check spelling or update in Tab 3.")
 from prizepicks_board_scraper import get_live_prizepicks_board
 
 # ==========================================
