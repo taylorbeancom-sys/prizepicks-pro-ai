@@ -48,15 +48,20 @@ with st.expander("🛠️ Database Diagnostics"):
         st.error("The app thinks the database is empty. Clear cache or re-scrape!")
 
     if st.button("🚀 Run Advanced Analysis", type="primary"):
-        # This finds 'Doncic' even if the database says 'Dončić'
-        search_term = player_input.split()[-1].lower().replace('ic', '') 
-        p_df = historical_df[historical_df['player_name'].str.lower().str.contains(search_term, na=False)]
+        import unicodedata
         
-        # 1. SMART SEARCH: Find player by last name to ignore accents/case
-        last_name_search = player_input.split()[-1].lower()
-        p_df = historical_df[historical_df['player_name'].str.lower().str.contains(last_name_search, na=False)]
+        def simplify(text):
+            # This turns 'Dončić' into 'doncic'
+            return "".join(c for c in unicodedata.normalize('NFD', str(text)) 
+                          if unicodedata.category(c) != 'Mn').lower()
+
+        search_term = simplify(player_input.split()[-1])
+        
+        # Apply the simplification to every name in the DB to find a match
+        p_df = historical_df[historical_df['player_name'].apply(simplify).str.contains(search_term, na=False)]
         
         if not p_df.empty:
+            # ... [Rest of your analysis code remains the same] ...
             st.info(f"✅ Found {len(p_df)} games for {player_input}. Analyzing...")
             
             # 2. RUN MODELS & METRICS
