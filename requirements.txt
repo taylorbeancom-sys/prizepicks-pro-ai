@@ -9,4 +9,3 @@ requests
 cloudscraper
 pytesseract
 Pillow
-re
