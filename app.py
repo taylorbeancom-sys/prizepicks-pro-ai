@@ -157,9 +157,55 @@ with tab2:
     else:
         st.info("No live lines found. Ensure bridge.py is running on your laptop!")
 
-# --- TAB 3: DATA ADMIN ---
+# --- TAB 3: BULK LOADER ---
 with tab3:
-    st.write("Manage your Supabase records here.")
+    st.header("📥 NBA Bulk Data Loader")
+    st.write("Search for any player to pull their recent games into your Supabase database.")
+    
+    target_player = st.text_input("Enter Player Name (e.g., Jayson Tatum)")
+    
+    if st.button("Fetch & Save Stats"):
+        if target_player:
+            with st.spinner(f"🏀 Fetching data for {target_player}..."):
+                try:
+                    from nba_api.stats.static import players
+                    from nba_api.stats.endpoints import playergamelog
+                    
+                    # 1. Find the Player ID
+                    nba_players = players.find_players_by_full_name(target_player)
+                    
+                    if nba_players:
+                        p_id = nba_players[0]['id']
+                        # 2. Get their 50 most recent games
+                        log = playergamelog.PlayerGameLog(player_id=p_id).get_data_frames()[0]
+                        
+                        # 3. Format for your 'player_historical_stats' table
+                        new_rows = []
+                        for _, row in log.head(50).iterrows():
+                            new_rows.append({
+                                "player_name": target_player,
+                                "points_scored": row['PTS'],
+                                "minutes_played": int(row['MIN']),
+                                "opponent_def_rating": 112.5, # Standard NBA Avg
+                                "pace": 100.2,               # Standard NBA Avg
+                                "game_date": row['GAME_DATE']
+                            })
+                        
+                        # 4. Push to Supabase
+                        supabase.table("player_historical_stats").upsert(new_rows).execute()
+                        
+                        st.success(f"✅ Successfully loaded {len(new_rows)} games for {target_player}!")
+                        st.balloons()
+                        st.info("💡 Important: Click 'Clear App Cache' below to make these stats show up in the Analysis tab.")
+                    else:
+                        st.error("Player not found in NBA records. Check the spelling!")
+                except Exception as e:
+                    st.error(f"Error fetching stats: {e}")
+        else:
+            st.warning("Please enter a name first.")
+
+    st.divider()
+    st.write("### System Admin")
     if st.button("Clear App Cache"):
         st.cache_data.clear()
         st.success("Cache cleared!")
