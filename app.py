@@ -123,14 +123,24 @@ with tab1:
         line_val = st.number_input("Line", value=30.5)
     with col2:
         opp = st.text_input("Opponent", "GSW")
-        if st.button("Run AI Analysis"):
+     if st.button("Run AI Analysis"):
+        # SAFETY CHECK: Stop if the database is empty
+        if historical_df.empty:
+            st.warning("⚠️ Your database is empty! Go to the 'Bulk Loader' tab and add some players first.")
+        else:
             # Simplified Analysis Logic
             search = simplify(p_name.split()[-1])
-            p_df = historical_df[historical_df['player_name'].apply(simplify).str.contains(search)]
-            if not p_df.empty:
-                render_optimizer_card(p_name, line_val, p_df['points_scored'].mean(), 58.2)
+            
+            # Additional check to ensure the column actually exists
+            if 'player_name' in historical_df.columns:
+                p_df = historical_df[historical_df['player_name'].apply(simplify).str.contains(search)]
+                
+                if not p_df.empty:
+                    render_optimizer_card(p_name, line_val, p_df['points_scored'].mean(), 58.2)
+                else:
+                    st.error(f"Player '{p_name}' not found in your current records.")
             else:
-                st.error("Player not found in database.")
+                st.error("Column 'player_name' missing. Check your Supabase table headers!")
 
 # --- TAB 2: LIVE OPTIMIZER (The PlayerProps.ai Look) ---
 with tab2:
