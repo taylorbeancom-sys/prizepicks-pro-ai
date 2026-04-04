@@ -2,7 +2,11 @@ import streamlit as st
 import pandas as pd
 import scipy.stats as stats
 import time
+import pytesseract
+from PIL import Image
+import re
 from datetime import datetime
+
 
 # Importing custom engines
 from advanced_metrics import get_opponent_metrics
@@ -178,3 +182,40 @@ with tab3:
                 scrape_nba_to_supabase(name.strip())
         st.success("✅ Database Synchronized!")
         st.cache_data.clear()
+
+# ==========================================
+# TAB 4: ENTRY SCANNER
+# ==========================================
+
+with tab4: # Create a new Tab 4
+    st.header("📸 Entry Scanner & Analyzer")
+    st.write("Upload a screenshot or paste a PrizePicks shared link to research the whole slip.")
+
+    uploaded_file = st.file_uploader("Upload PrizePicks Screenshot", type=['png', 'jpg', 'jpeg'])
+    entry_link = st.text_input("OR Paste Shared Entry Link")
+
+    if uploaded_file:
+        img = Image.open(uploaded_file)
+        st.image(img, caption="Scanning Entry...", width=300)
+        
+        # OCR: Convert Image to Text
+        raw_text = pytesseract.image_to_string(img)
+        
+        # LOGIC: Find Players and Lines (e.g., "Luka Doncic 31.5")
+        # This regex looks for Name + Number
+        found_picks = re.findall(r"([A-Z][a-z]+ [A-Z][a-z]+)\s+([\d.]+)", raw_text)
+        
+        if found_picks:
+            st.success(f"🔍 Found {len(found_picks)} picks in screenshot!")
+            for name, line in found_picks:
+                st.write(f"**Analyzing {name} (Line: {line})**")
+                # Trigger your existing analysis function
+                # run_analysis(name, float(line)) 
+        else:
+            st.error("Could not read picks. Make sure the player names and lines are clear!")
+
+    if entry_link:
+        # Link Parsing Logic
+        if "prizepicks.com" in entry_link:
+            st.info("🔗 Link detected. Attempting to pull entry data...")
+            # Here we would use your 'bridge.py' logic to fetch the specific link
