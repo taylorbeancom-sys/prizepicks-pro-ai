@@ -5,7 +5,7 @@ from supabase import create_client, Client
 import time
 
 SUPABASE_URL = "https://ogoskeocotuxekkwbesa.supabase.co"
-SUPABASE_KEY = "sb_secret_KzvwXwgyZHcdUGXOBP5sYg_zfpeNKAL" # Get from Project Settings -> API
+SUPABASE_KEY = "sb_secret_bq7wEtQKTgXebOH4hH7OrQ_X-j-LMbi" # Get from Project Settings -> API
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
