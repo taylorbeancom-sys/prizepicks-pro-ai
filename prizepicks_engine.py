@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 from supabase import create_client, Client
 
 SUPABASE_URL = "https://ogoskeocotuxekkwbesa.supabase.co"
-SUPABASE_KEY = "sb_publishable_HBkc3_JYSmjCwjf10aCVpQ_sQO9a4EN"
+SUPABASE_KEY = "sb_secret_bq7wEtQKTgXebOH4hH7OrQ_X-j-LMbi"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
