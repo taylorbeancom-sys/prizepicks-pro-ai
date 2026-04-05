@@ -237,7 +237,7 @@ with tab3:
                         except Exception as player_error:
                             # 3. This is the key: if ONE player times out, we just skip them and keep going
                             st.sidebar.warning(f"⚠️ Skipped {p_name} due to timeout.")
-                            time.sleep(2) # Give the API a longer breather
+                            time.sleep(1) # Give the API a longer breather
                             continue
 
                         # Update progress
