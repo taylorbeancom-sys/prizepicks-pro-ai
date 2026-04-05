@@ -251,21 +251,45 @@ with tab3:
 # --- TAB 4: OCR SCANNER ---
 with tab4:
     st.header("📸 Smart Entry Scanner")
+    st.write("Upload a PrizePicks entry slip to see the AI Win Probability for each pick.")
     uploaded_file = st.file_uploader("Upload PrizePicks Screenshot", type=['png', 'jpg', 'jpeg'])
 
     if uploaded_file:
         img = Image.open(uploaded_file)
-        st.image(img, caption="Scanning...", width=400)
+        st.image(img, caption="Analyzing Screenshot...", width=400)
         
-        raw_text = pytesseract.image_to_string(img)
-        found_picks = re.findall(r"([A-Z][a-z]+ [A-Z][a-z]+)\s+([\d.]+)", raw_text)
-        
-        if found_picks:
-            st.success(f"🔍 Detected {len(found_picks)} picks in slip")
-            for name, line in found_picks:
-                search = simplify(name.split()[-1])
-                p_df = historical_df[historical_df['player_name'].apply(simplify).str.contains(search)]
-                if not p_df.empty:
-                    render_optimizer_card(name, float(line), p_df['points_scored'].mean(), 55.1)
-                else:
-                    st.warning(f"No history found for {name}. Please Bulk Load stats first.")
+        with st.spinner("🤖 AI is reading the slip..."):
+            raw_text = pytesseract.image_to_string(img)
+            # Regex to find Player Name and their Line (e.g. Jayson Tatum 26.5)
+            found_picks = re.findall(r"([A-Z][a-z]+ [A-Z][a-z]+)\s+([\d.]+)", raw_text)
+            
+            if found_picks:
+                st.success(f"🔍 Detected {len(found_picks)} picks in slip")
+                
+                for name, line in found_picks:
+                    # Search for player history
+                    search = simplify(name.split()[-1])
+                    p_df = historical_df[historical_df['player_name'].apply(simplify).str.contains(search)]
+                    
+                    if not p_df.empty and len(p_df) > 5:
+                        try:
+                            # 🤖 AI MODELING (Same logic as Optimizer)
+                            X = p_df[['opponent_def_rating', 'pace', 'minutes_played']]
+                            y = p_df['points_scored']
+                            
+                            model = LinearRegression().fit(X, y)
+                            std_dev = y.std() if len(y) > 1 else 5.0
+                            
+                            # Predict based on Neutral Game Settings
+                            proj = model.predict([[112.0, 100.0, 34.0]])[0]
+                            
+                            # Calculate Win Prob using the Normal Distribution
+                            win_prob = round(stats.norm.sf(float(line), loc=proj, scale=std_dev) * 100, 1)
+                            
+                            render_optimizer_card(name, float(line), proj, win_prob)
+                        except Exception as e:
+                            st.warning(f"Could not analyze {name}: {e}")
+                    else:
+                        st.info(f"⏳ Found {name}, but not enough history in DB yet. Run the Global Sync!")
+            else:
+                st.error("No names or lines detected. Try a clearer screenshot!")
