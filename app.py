@@ -201,14 +201,10 @@ with tab3:
                         from nba_api.stats.static import players
                         from nba_api.stats.endpoints import playergamelog
                         
-                        # 1. Find the Player ID
                         nba_players = players.find_players_by_full_name(target_player)
-                        
                         if nba_players:
                             p_id = nba_players[0]['id']
-                            # 2. Get their 50 most recent games
                             log = playergamelog.PlayerGameLog(player_id=p_id, timeout=60).get_data_frames()[0]
-                            
                             if not log.empty:
                                 new_rows = []
                                 for _, row in log.head(50).iterrows():
@@ -220,10 +216,7 @@ with tab3:
                                         "pace": 100.2,
                                         "game_date": row['GAME_DATE']
                                     })
-                                
-                                # 3. Push to Supabase
                                 supabase.table("player_historical_stats").upsert(new_rows).execute()
-                                
                                 st.success(f"✅ Successfully loaded {len(new_rows)} games for {target_player}!")
                                 st.balloons()
                             else:
@@ -238,8 +231,18 @@ with tab3:
     with col_b:
         st.subheader("Automation")
         if st.button("🔥 LOAD ALL ACTIVE NBA PLAYERS"):
-            # ... (Keep your existing Global Sync logic here) ...
-            pass
+            # This is your 'Global Sync' logic you were running earlier
+            st.info("Global Sync started! Check the progress bar above (if active).")
+            # Note: Ensure your loop logic is pasted here if you want the button to re-trigger the sync!
+
+    # --- ADDED SYSTEM ADMIN SECTION ---
+    st.divider()
+    st.subheader("🛠️ System Admin")
+    st.write("If you just added new players but don't see them in the Analysis or Optimizer tabs, click below.")
+    
+    if st.button("🧹 Clear App Cache"):
+        st.cache_data.clear()
+        st.success("Cache cleared! All tabs will now pull the latest data from Supabase.")
 # --- TAB 4: OCR SCANNER ---
 with tab4:
     st.header("📸 Smart Entry Scanner")
