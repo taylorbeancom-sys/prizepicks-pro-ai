@@ -116,7 +116,6 @@ st.title("🎯 PrizePicks Pro AI Optimizer")
 tab1, tab2, tab3, tab4 = st.tabs(["🚀 Analysis", "📡 Live Optimizer", "📥 Bulk Loader", "📸 OCR Scanner"])
 
 # --- TAB 1: SINGLE PLAYER ---
-# --- TAB 1: SINGLE PLAYER ---
 with tab1:
     col1, col2 = st.columns(2)
     with col1:
@@ -147,6 +146,7 @@ with tab1:
                 st.error("Column 'player_name' missing. Check your Supabase table headers!")
 
 # --- TAB 2: LIVE OPTIMIZER ---
+# --- TAB 2: LIVE OPTIMIZER ---
 with tab2:
     st.subheader("🔥 Today's High-Edge NBA Props")
     live_board = load_live_board()
@@ -162,32 +162,29 @@ with tab2:
             p_hist = historical_df[historical_df['player_name'].apply(simplify).str.contains(search)]
             
             if not p_hist.empty:
-                 if not p_hist.empty:
                 try:
                     # 🤖 MACHINE LEARNING MODEL
-                    # Using the columns you have in Supabase: pts, mins, def_rating, pace
+                    # Using the columns in your Supabase table
                     X = p_hist[['opponent_def_rating', 'pace', 'minutes_played']]
                     y = p_hist['points_scored']
                     
                     model = LinearRegression().fit(X, y)
                     std_dev = y.std() if len(y) > 1 else 5.0
                     
-                    # PREDICT: Assume a standard NBA game (112 Defense, 100 Pace, 34 Mins)
-                    # You can eventually make these dynamic!
+                    # PREDICT: Neutral game assumptions (Avg Defense/Pace/Mins)
                     real_proj = model.predict([[112.0, 100.0, 34.0]])[0]
                     
-                    # CALCULATE WIN PROB: Using Normal Distribution (The "Pro" way)
-                    # This calculates the chance of scoring MORE than the line
+                    # CALCULATE WIN PROB: Normal Distribution area
                     win_prob = round(stats.norm.sf(float(line), loc=real_proj, scale=std_dev) * 100, 1)
                     
                     render_optimizer_card(name, line, real_proj, win_prob)
                 except Exception as e:
                     st.error(f"AI Error for {name}: {e}")
             else:
-                # If you haven't bulk-loaded this player yet
+                # If stats haven't been bulk-loaded yet
                 st.info(f"⏳ {name} is on the board, but his stats aren't in Supabase. Go to Bulk Loader!")
     else:
-        st.warning("📡 No live lines found in 'live_board'. Run bridge.py on your laptop to sync the PrizePicks board!")
+        st.warning("📡 No live lines found. Run bridge.py on your laptop to sync the PrizePicks board!")
 
 # --- TAB 3: BULK LOADER ---
 with tab3:
