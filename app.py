@@ -231,6 +231,8 @@ with tab3:
     with col_b:
         st.subheader("Automation")
         if st.button("🔥 LOAD ALL ACTIVE NBA PLAYERS"):
+            progress_bar = st.progress(0) # Line 1
+            status_text = st.empty()     # Line 2
             # This is your 'Global Sync' logic you were running earlier
             st.info("Global Sync started! Check the progress bar above (if active).")
             # Note: Ensure your loop logic is pasted here if you want the button to re-trigger the sync!
