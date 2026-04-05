@@ -50,7 +50,7 @@ st.markdown("""
 # 2. DATA CONNECTIONS
 # ==========================================
 url = "https://ogoskeocotuxekkwbesa.supabase.co"
-key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nb3NrZW9jb3R1eGVra3diZXNhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTMyNzEzOCwiZXhwIjoyMDkwOTAzMTM4fQ.lJvWDUvuqPx1FA_yBEYeYx7dA7Pf9O1sY_4Bwx0gJVk"
+key = st.secrets["SUPABASE_KEY"]
 supabase = create_client(url, key)
 
 @st.cache_data(ttl=600)
