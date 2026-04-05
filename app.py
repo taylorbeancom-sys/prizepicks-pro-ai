@@ -162,7 +162,7 @@ with tab2:
             p_hist = historical_df[historical_df['player_name'].apply(simplify).str.contains(search)]
             
             if not p_hist.empty:
-                if not p_hist.empty:
+                 if not p_hist.empty:
                 try:
                     # 🤖 MACHINE LEARNING MODEL
                     # Using the columns you have in Supabase: pts, mins, def_rating, pace
