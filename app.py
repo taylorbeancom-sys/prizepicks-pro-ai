@@ -215,26 +215,34 @@ with tab3:
                         p_name = p['full_name']
                         status_text.text(f"Processing: {p_name} ({i+1}/{len(active_nba_players)})")
                         
-                        # 2. Fetch last 50 games
-                        log = playergamelog.PlayerGameLog(player_id=p['id']).get_data_frames()[0]
-                        
-                        if not log.empty:
-                            new_rows = []
-                            for _, row in log.head(50).iterrows():
-                                new_rows.append({
-                                    "player_name": p_name,
-                                    "points_scored": row['PTS'],
-                                    "minutes_played": int(row['MIN']) if row['MIN'] else 0,
-                                    "opponent_def_rating": 112.5,
-                                    "pace": 100.2,
-                                    "game_date": row['GAME_DATE']
-                                })
-                            # 3. Upsert to Supabase
-                            supabase.table("player_historical_stats").upsert(new_rows).execute()
-                        
+                        try:
+                            # 1. Added a 60-second timeout to give the NBA server more time
+                            log_call = playergamelog.PlayerGameLog(player_id=p['id'], timeout=60)
+                            log = log_call.get_data_frames()[0]
+                            
+                            if not log.empty:
+                                new_rows = []
+                                for _, row in log.head(50).iterrows():
+                                    new_rows.append({
+                                        "player_name": p_name,
+                                        "points_scored": row['PTS'],
+                                        "minutes_played": int(row['MIN']) if row['MIN'] else 0,
+                                        "opponent_def_rating": 112.5,
+                                        "pace": 100.2,
+                                        "game_date": row['GAME_DATE']
+                                    })
+                                # 2. Upsert to Supabase
+                                supabase.table("player_historical_stats").upsert(new_rows).execute()
+                                
+                        except Exception as player_error:
+                            # 3. This is the key: if ONE player times out, we just skip them and keep going
+                            st.sidebar.warning(f"⚠️ Skipped {p_name} due to timeout.")
+                            time.sleep(2) # Give the API a longer breather
+                            continue
+
                         # Update progress
                         progress_bar.progress((i + 1) / len(active_nba_players))
-                        time.sleep(0.5) # Prevent rate-limiting from NBA API
+                        time.sleep(1.0) # Increased to 1 second to be safer against rate-limiting
                         
                     st.success("🏆 Global Sync Complete! Every active player is now in Supabase.")
                 except Exception as e:
