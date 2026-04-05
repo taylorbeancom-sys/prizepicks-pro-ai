@@ -195,67 +195,51 @@ with tab3:
         st.subheader("Manual Load")
         target_player = st.text_input("Enter Player Name", placeholder="e.g. Jayson Tatum")
         if st.button("Fetch Individual Stats"):
-            # ... (Keep your existing individual fetch logic here) ...
-            pass
-
-    with col_b:
-        st.subheader("Automation")
-        if st.button("🔥 LOAD ALL ACTIVE NBA PLAYERS"):
-            with st.spinner("🏀 Initializing Global Sync... This may take a few minutes."):
-                try:
-                    from nba_api.stats.static import players
-                    from nba_api.stats.endpoints import playergamelog
-                    
-                    # 1. Get every single active player (approx 450-500)
-                    active_nba_players = players.get_active_players()
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
-                    
-                    for i, p in enumerate(active_nba_players):
-                        p_name = p['full_name']
-                        status_text.text(f"Processing: {p_name} ({i+1}/{len(active_nba_players)})")
+            if target_player:
+                with st.spinner(f"🏀 Fetching data for {target_player}..."):
+                    try:
+                        from nba_api.stats.static import players
+                        from nba_api.stats.endpoints import playergamelog
                         
-                        try:
-                            # 1. Added a 60-second timeout to give the NBA server more time
-                            log_call = playergamelog.PlayerGameLog(player_id=p['id'], timeout=60)
-                            log = log_call.get_data_frames()[0]
+                        # 1. Find the Player ID
+                        nba_players = players.find_players_by_full_name(target_player)
+                        
+                        if nba_players:
+                            p_id = nba_players[0]['id']
+                            # 2. Get their 50 most recent games
+                            log = playergamelog.PlayerGameLog(player_id=p_id, timeout=60).get_data_frames()[0]
                             
                             if not log.empty:
                                 new_rows = []
                                 for _, row in log.head(50).iterrows():
                                     new_rows.append({
-                                        "player_name": p_name,
+                                        "player_name": target_player,
                                         "points_scored": row['PTS'],
                                         "minutes_played": int(row['MIN']) if row['MIN'] else 0,
                                         "opponent_def_rating": 112.5,
                                         "pace": 100.2,
                                         "game_date": row['GAME_DATE']
                                     })
-                                # 2. Upsert to Supabase
+                                
+                                # 3. Push to Supabase
                                 supabase.table("player_historical_stats").upsert(new_rows).execute()
                                 
-                        except Exception as player_error:
-                            # 3. This is the key: if ONE player times out, we just skip them and keep going
-                            st.sidebar.warning(f"⚠️ Skipped {p_name} due to timeout.")
-                            time.sleep(1) # Give the API a longer breather
-                            continue
+                                st.success(f"✅ Successfully loaded {len(new_rows)} games for {target_player}!")
+                                st.balloons()
+                            else:
+                                st.warning(f"No game data found for {target_player} this season.")
+                        else:
+                            st.error("Player not found in NBA records. Check the spelling!")
+                    except Exception as e:
+                        st.error(f"Error fetching stats: {e}")
+            else:
+                st.warning("Please enter a name first.")
 
-                        # Update progress
-                        progress_bar.progress((i + 1) / len(active_nba_players))
-                        time.sleep(1.0) # Increased to 1 second to be safer against rate-limiting
-                        
-                    st.success("🏆 Global Sync Complete! Every active player is now in Supabase.")
-                except Exception as e:
-                    st.error(f"Global Sync Error: {e}")
-        else:
-            st.warning("Please enter a name first.")
-
-    st.divider()
-    st.write("### System Admin")
-    if st.button("Clear App Cache"):
-        st.cache_data.clear()
-        st.success("Cache cleared!")
-
+    with col_b:
+        st.subheader("Automation")
+        if st.button("🔥 LOAD ALL ACTIVE NBA PLAYERS"):
+            # ... (Keep your existing Global Sync logic here) ...
+            pass
 # --- TAB 4: OCR SCANNER ---
 with tab4:
     st.header("📸 Smart Entry Scanner")
