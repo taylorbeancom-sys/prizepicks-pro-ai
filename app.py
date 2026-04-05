@@ -162,16 +162,27 @@ with tab2:
             p_hist = historical_df[historical_df['player_name'].apply(simplify).str.contains(search)]
             
             if not p_hist.empty:
-                # REAL CALCULATION: Use the average of their last 20 games
-                real_proj = p_hist['points_scored'].mean()
-                
-                # Calculate Win Probability (Simplified for now)
-                # If projection is higher than the line, we like the OVER
-                edge = real_proj - line
-                win_prob = 50 + (edge * 2) # Simple edge multiplier
-                win_prob = max(min(win_prob, 65), 35) # Keep it realistic between 35%-65%
-
-                render_optimizer_card(name, line, real_proj, round(win_prob, 1))
+                if not p_hist.empty:
+                try:
+                    # 🤖 MACHINE LEARNING MODEL
+                    # Using the columns you have in Supabase: pts, mins, def_rating, pace
+                    X = p_hist[['opponent_def_rating', 'pace', 'minutes_played']]
+                    y = p_hist['points_scored']
+                    
+                    model = LinearRegression().fit(X, y)
+                    std_dev = y.std() if len(y) > 1 else 5.0
+                    
+                    # PREDICT: Assume a standard NBA game (112 Defense, 100 Pace, 34 Mins)
+                    # You can eventually make these dynamic!
+                    real_proj = model.predict([[112.0, 100.0, 34.0]])[0]
+                    
+                    # CALCULATE WIN PROB: Using Normal Distribution (The "Pro" way)
+                    # This calculates the chance of scoring MORE than the line
+                    win_prob = round(stats.norm.sf(float(line), loc=real_proj, scale=std_dev) * 100, 1)
+                    
+                    render_optimizer_card(name, line, real_proj, win_prob)
+                except Exception as e:
+                    st.error(f"AI Error for {name}: {e}")
             else:
                 # If you haven't bulk-loaded this player yet
                 st.info(f"⏳ {name} is on the board, but his stats aren't in Supabase. Go to Bulk Loader!")
