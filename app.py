@@ -146,7 +146,6 @@ with tab1:
                 st.error("Column 'player_name' missing. Check your Supabase table headers!")
 
 # --- TAB 2: LIVE OPTIMIZER ---
-# --- TAB 2: LIVE OPTIMIZER ---
 with tab2:
     st.subheader("🔥 Today's High-Edge NBA Props")
     live_board = load_live_board()
@@ -189,47 +188,57 @@ with tab2:
 # --- TAB 3: BULK LOADER ---
 with tab3:
     st.header("📥 NBA Bulk Data Loader")
-    st.write("Search for any player to pull their recent games into your Supabase database.")
     
-    target_player = st.text_input("Enter Player Name (e.g., Jayson Tatum)")
+    col_a, col_b = st.columns(2)
     
-    if st.button("Fetch & Save Stats"):
-        if target_player:
-            with st.spinner(f"🏀 Fetching data for {target_player}..."):
+    with col_a:
+        st.subheader("Manual Load")
+        target_player = st.text_input("Enter Player Name", placeholder="e.g. Jayson Tatum")
+        if st.button("Fetch Individual Stats"):
+            # ... (Keep your existing individual fetch logic here) ...
+            pass
+
+    with col_b:
+        st.subheader("Automation")
+        if st.button("🔥 LOAD ALL ACTIVE NBA PLAYERS"):
+            with st.spinner("🏀 Initializing Global Sync... This may take a few minutes."):
                 try:
                     from nba_api.stats.static import players
                     from nba_api.stats.endpoints import playergamelog
                     
-                    # 1. Find the Player ID
-                    nba_players = players.find_players_by_full_name(target_player)
+                    # 1. Get every single active player (approx 450-500)
+                    active_nba_players = players.get_active_players()
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
                     
-                    if nba_players:
-                        p_id = nba_players[0]['id']
-                        # 2. Get their 50 most recent games
-                        log = playergamelog.PlayerGameLog(player_id=p_id).get_data_frames()[0]
+                    for i, p in enumerate(active_nba_players):
+                        p_name = p['full_name']
+                        status_text.text(f"Processing: {p_name} ({i+1}/{len(active_nba_players)})")
                         
-                        # 3. Format for your 'player_historical_stats' table
-                        new_rows = []
-                        for _, row in log.head(50).iterrows():
-                            new_rows.append({
-                                "player_name": target_player,
-                                "points_scored": row['PTS'],
-                                "minutes_played": int(row['MIN']),
-                                "opponent_def_rating": 112.5, # Standard NBA Avg
-                                "pace": 100.2,               # Standard NBA Avg
-                                "game_date": row['GAME_DATE']
-                            })
+                        # 2. Fetch last 50 games
+                        log = playergamelog.PlayerGameLog(player_id=p['id']).get_data_frames()[0]
                         
-                        # 4. Push to Supabase
-                        supabase.table("player_historical_stats").upsert(new_rows).execute()
+                        if not log.empty:
+                            new_rows = []
+                            for _, row in log.head(50).iterrows():
+                                new_rows.append({
+                                    "player_name": p_name,
+                                    "points_scored": row['PTS'],
+                                    "minutes_played": int(row['MIN']) if row['MIN'] else 0,
+                                    "opponent_def_rating": 112.5,
+                                    "pace": 100.2,
+                                    "game_date": row['GAME_DATE']
+                                })
+                            # 3. Upsert to Supabase
+                            supabase.table("player_historical_stats").upsert(new_rows).execute()
                         
-                        st.success(f"✅ Successfully loaded {len(new_rows)} games for {target_player}!")
-                        st.balloons()
-                        st.info("💡 Important: Click 'Clear App Cache' below to make these stats show up in the Analysis tab.")
-                    else:
-                        st.error("Player not found in NBA records. Check the spelling!")
+                        # Update progress
+                        progress_bar.progress((i + 1) / len(active_nba_players))
+                        time.sleep(0.5) # Prevent rate-limiting from NBA API
+                        
+                    st.success("🏆 Global Sync Complete! Every active player is now in Supabase.")
                 except Exception as e:
-                    st.error(f"Error fetching stats: {e}")
+                    st.error(f"Global Sync Error: {e}")
         else:
             st.warning("Please enter a name first.")
 
